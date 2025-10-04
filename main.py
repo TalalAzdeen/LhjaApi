@@ -1,1 +1,12 @@
+from fastapi import FastAPI
+import gradio as gr
+from fastapi.responses import RedirectResponse
+from gradio_ui import demo
+from  encrypt  import * 
+ 
 
+ 
+app = FastAPI()
+company_handler = CompanyHandler() 
+app.include_router(company_handler.get_router(), prefix="/company", tags=["Company"])
+ 
