@@ -28,7 +28,7 @@ class UserHandler:
     CONNECTION_STRING = "DefaultEndpointsProtocol=https;AccountName=lhjaspcev15204396534;AccountKey=vbGXAI8Fqix/bV15xFfkU3pzgs9wCav0IRy9Vv0gVjh0s3sAZV1oLi3NgMC6fG6MsvhMg7/VohUC+AStizl4zg==;EndpointSuffix=core.windows.net"
     CONTAINER_NAME = "soundsaudi"
     AZURE_TTS_ENDPOINT = "https://lahja-dev-resource.cognitiveservices.azure.com/openai/deployments/LAHJA-V1/audio/speech?api-version=2025-03-01-preview"
-    AZURE_CHAT_ENDPOINT = "https://lahja-dev-resource.cognitiveservices.azure.com/openai/deployments/LAHJA-V1/chat/completions?api-version=2025-03-01-preview"
+    AZURE_CHAT_ENDPOINT = "https://lahja-dev-resource.cognitiveservices.azure.com/openai/deployments/gpt-4o/chat/completions?api-version=2025-01-01-preview"
 
     def __init__(self):
         self.router = APIRouter()
@@ -54,7 +54,7 @@ class UserHandler:
                 raise HTTPException(status_code=403, detail="Request limit exceeded")
             key_service = self.get_key_service_from_encryption_key(key)
             result = self.chat_with_gpt(message, key_service)
-            self.increment_request_count(key)
+            #self.increment_request_count(key)
             return {"response": result}
 
         @self.router.post("/ChatText2Speech")
@@ -63,7 +63,7 @@ class UserHandler:
                 raise HTTPException(status_code=403, detail="Request limit exceeded")
             key_service = self.get_key_service_from_encryption_key(api_key)
             url = self.text_to_speech_and_upload(text, key_service, file_type, voice)
-            self.increment_request_count(api_key)
+            #self.increment_request_count(api_key)
             return {"audio_url": url}
 
     def load_db(self):
