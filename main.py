@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 import gradio as gr
 from fastapi.responses import RedirectResponse
-from gradio_ui import demo
+ 
 from  encrypt  import * 
  
 
