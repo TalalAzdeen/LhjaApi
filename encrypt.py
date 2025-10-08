@@ -8,8 +8,21 @@ import uuid
 import requests
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 from azure.storage.blob import BlobServiceClient
+from sqlitedb import CompanyDB
 
 DB_FILE = "db.json"
+
+class CompanyCreate(BaseModel):
+    name: str
+    license_number: str
+    employees:int = 0
+    services:str = ""
+
+class CompanyUpdate(BaseModel):
+    name:str
+    license_number:str
+    employees:int
+    services:str
 
 class CompanyData(BaseModel):
     key_service: str
@@ -34,6 +47,44 @@ class UserHandler:
         self.router = APIRouter()
         self.db_json = self.load_db()
 
+
+        @self.router.post("/companies/")
+        def create_company(company: CompanyCreate):
+            company_id = self.db.add_company(
+                name=company.name,
+                license_number=company.license_number,
+                employees=company.employees,
+                services=company.services
+            )
+            return {"company_id": company_id, "message": "Company created successfully"}
+
+        def create_company(company: CompanyCreate):
+            company_id = self.db.add_company(
+                name=company.name,
+                license_number=company.license_number,
+                employees=company.employees,
+                services=company.services
+            )
+            return {"company_id": company_id, "message": "Company created successfully"}
+
+        @self.router.put("/companies/{company_id}")
+        def update_company(company_id: str, company: CompanyUpdate):
+            success = self.db.update_company(company_id, company.dict(exclude_none=True))
+            if not success:
+                raise HTTPException(status_code=404, detail="Company not found")
+            return {"message": "Company updated successfully"}
+
+        @self.router.delete("/companies/{company_id}")
+        def delete_company(company_id: str):
+            success = self.db.delete_company(company_id)
+            if not success:
+                raise HTTPException(status_code=404, detail="Company not found")
+            return {"message": "Company deleted successfully"}
+
+        @self.router.get("/companies/search/")
+        def search_companies(column: str, keyword: str):
+            results = self.db.search_company(column, keyword)
+            return {"results": results}    
         @self.router.post("/add-company/")
         def add_company(company_info: CompanyData):
             encrypted_item = self.encrypt_json(company_info.dict())
