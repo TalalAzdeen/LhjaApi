@@ -52,7 +52,38 @@ class UserHandler:
         self.db_json = self.load_db()
         self.db = CompanyDB("LhjaAPIDb.db")
         
+        @self.router.post("/sessions/")
+        def create_session(session: SessionCreate):
+            session_id = self.db1.add_session(
+                company_id=session.company_id,
+                status=session.status,
+                total_orders=session.total_orders,
+                used_orders=session.used_orders
+            )
+            return {"session_id": session_id, "message": "Session created successfully"}
 
+         
+        @self.router.put("/sessions/{session_id}")
+        def update_used_orders(session_id: str, session: SessionUpdate):
+            if session.used_orders is None:
+                raise HTTPException(status_code=400, detail="used_orders required")
+            success = self.db1.update_used_orders(session_id, session.used_orders)
+            if not success:
+                raise HTTPException(status_code=400, detail="Cannot update UsedOrders")
+            return {"message": "UsedOrders updated successfully"}
+
+     
+        @self.router.get("/sessions/search/")
+        def search_sessions(column: str, keyword: str):
+            results = self.db1.search_session(column, keyword)
+        
+        @self.router.get("/sessions")
+        def get_all_companies():
+            companies =self.db1.select("Sessions")
+            return {"Sessions": companies}
+
+
+            return {"results": results}
         @self.router.post("/companies/")
         def create_company(company: CompanyCreate):
             company_id = self.db.add_company(
