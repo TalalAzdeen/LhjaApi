@@ -50,7 +50,7 @@ class UserHandler:
     def __init__(self):
         self.router = APIRouter()
         self.db_json = self.load_db()
-        self.db = CompanyDB()
+        self.db = CompanyDB("LhjaAPIDb.db")
         
 
         @self.router.post("/companies/")
