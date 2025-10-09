@@ -61,7 +61,7 @@ class UserHandler:
         self.db_json = self.load_db()
         self.db = CompanyDB("LhjaAPIDb.db")
         self.db1 = SessionDB("LhjaAPIDb.db")
-        
+        self.db1.create_table()
         @self.router.post("/sessions/")
         def create_session(session: SessionCreate):
             session_id = self.db1.add_session(
