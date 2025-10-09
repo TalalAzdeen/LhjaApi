@@ -108,9 +108,9 @@ class SessionDB(GeneralDatabase):
         }
         super().create_table(self.TABLE_NAME, columns)
 
-    def add_session(self, company_id: str, status: str = "Active", total_orders: int = 0, used_orders: int = 0):
+    def add_session(self, company_id: str,token:str, status: str = "Active", total_orders: int = 0, used_orders: int = 0):
         session_id = str(uuid.uuid4())
-        token = str(uuid.uuid4())
+        token =token
         login_time = datetime.now().isoformat()
         super().insert(self.TABLE_NAME, {
             "SessionId": session_id,
@@ -218,3 +218,4 @@ class CompanyDB(GeneralDatabase):
      
     def search_company(self, column: str, keyword: str):
         return super().search_like(self.TABLE_NAME, column, keyword)   
+
