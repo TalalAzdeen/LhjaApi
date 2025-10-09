@@ -91,7 +91,10 @@ class UserHandler:
             encrypted_item = self.encrypt_json(company_info.dict())
             self.append_to_db(encrypted_item)
             return {"encryption_key": encrypted_item["encryption_key"]}
-
+        @self.router.get("/companies")
+        def get_all_companies():
+            companies = company_db.select("Company")
+            return {"companies": companies}
         @self.router.post("/get-company/")
         def get_company(data: EncryptionKeyRequest):
             found_item = next((item for item in self.db_json["encrypted_data_list"] if item["encryption_key"] == data.encryption_key), None)
