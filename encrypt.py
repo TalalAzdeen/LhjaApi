@@ -54,6 +54,7 @@ class UserHandler:
        
         self.db = CompanyDB("LhjaAPIDb.db")
         self.db1 = SessionDB("LhjaAPIDb.db")
+        self.db1.create_table()
         self.cipher = AESCipher()
         
         @self.router.post("/sessions/")
