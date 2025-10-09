@@ -47,7 +47,7 @@ class UserHandler:
         self.router = APIRouter()
         self.db_json = self.load_db()
         self.db = CompanyDB()
-        self.db.create_table() 
+        
 
         @self.router.post("/companies/")
         def create_company(company: CompanyCreate):
