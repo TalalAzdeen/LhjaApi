@@ -84,7 +84,7 @@ class UserHandler:
             results = self.db1.search_session(column, keyword)
         
         @self.router.get("/sessions")
-        def get_all_sessions():
+        def get_all_sessions(): 
             companies =self.db1.select("Sessions")
             return {"Sessions": companies}
 
