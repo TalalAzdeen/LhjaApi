@@ -156,7 +156,7 @@ class UserHandler:
         @self.router.post("/encrypt")
         def encrypt_text(data: TextData):
             encrypted =self.cipher.encrypt(data.text)
-            key_b64 = AESCipher.key_to_base64(cipher.key)
+            key_b64 = AESCipher.key_to_base64(self.cipher.key)
             return {"encrypted": encrypted, "key": key_b64}
         
         @self.router.post("/decrypt")
