@@ -8,7 +8,7 @@ import uuid
 import requests
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 from azure.storage.blob import BlobServiceClient
-from sqlitedb import CompanyDB
+from sqlitedb import *
 
 DB_FILE = "db.json"
 class Options(BaseModel):
