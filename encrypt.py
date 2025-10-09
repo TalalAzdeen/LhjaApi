@@ -11,7 +11,11 @@ from azure.storage.blob import BlobServiceClient
 from sqlitedb import CompanyDB
 
 DB_FILE = "db.json"
-
+class Options(BaseModel):
+    text_deployment_name: str
+    api_version: str  
+    base_url: str 
+   
 class CompanyCreate(BaseModel):
     name: str
     license_number: str
@@ -102,7 +106,11 @@ class UserHandler:
                 raise HTTPException(status_code=404, detail="Company not found")
             decrypted_data = self.decrypt_json(found_item["encrypted_token"], found_item["encryption_key"])
             return {"company_info": decrypted_data}
-
+        @self.router.post("/ChatText2Text2")
+        def chat_text2text2(message: str,Customize_the_dialect:str,token:str,options:Options):
+            
+            result = self.chat_with_gpt(message,token)
+            return {"response": result}
         @self.router.post("/ChatText2Text")
         def chat_text2text(message: str, key: str):
             if not self.check_subscription(key)["is_allowed"]:
