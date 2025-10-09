@@ -4,7 +4,7 @@ from datetime import datetime
 import uuid
 
 class GeneralDatabase:
-    def __init__(self, db_file: str = "database.db"):
+    def __init__(self, db_file: str ):
         self.db_file = db_file
 
     def _connect(self):
@@ -215,6 +215,7 @@ class CompanyDB(GeneralDatabase):
      
     def search_company(self, column: str, keyword: str):
         return super().search_like(self.TABLE_NAME, column, keyword)   
+
 
 
 
