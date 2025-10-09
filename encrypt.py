@@ -93,7 +93,7 @@ class UserHandler:
             return {"encryption_key": encrypted_item["encryption_key"]}
         @self.router.get("/companies")
         def get_all_companies():
-            companies = company_db.select("Company")
+            companies =self.db.select("Company")
             return {"companies": companies}
         @self.router.post("/get-company/")
         def get_company(data: EncryptionKeyRequest):
