@@ -9,6 +9,7 @@ import requests
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 from azure.storage.blob import BlobServiceClient
 from sqlitedb import *
+from aes_cipher import AESCipher
 
  
 class Options(BaseModel):
@@ -34,19 +35,11 @@ class SessionCreate(BaseModel):
     total_orders:int= 0
     used_orders:int= 0
 
-
+class TextData(BaseModel):
+    text: str
 class SessionUpdate(BaseModel):
     used_orders:int
-class CompanyData(BaseModel):
-    key_service: str
-    company_name: str
-    license: str
-    employees: int
-    services: list[str]
-    subscription_type: str = "free"
-    max_requests: int = 10
-    current_requests: int = 0
-
+ 
 class EncryptionKeyRequest(BaseModel):
     encryption_key: str
 
@@ -61,6 +54,7 @@ class UserHandler:
         self.db_json = self.load_db()
         self.db = CompanyDB("LhjaAPIDb.db")
         self.db1 = SessionDB("LhjaAPIDb.db")
+        self.cipher = AESCipher()
         
         @self.router.post("/sessions/")
         def create_session(session: SessionCreate):
@@ -157,7 +151,20 @@ class UserHandler:
             url = self.text_to_speech_and_upload(text, api_key, file_type, voice)
             #self.increment_request_count(api_key)
             return {"audio_url": url}
-
+        
+        @self.router.post("/encrypt")
+        def encrypt_text(data: TextData):
+            encrypted =self.cipher.encrypt(data.text)
+            key_b64 = AESCipher.key_to_base64(cipher.key)
+            return {"encrypted": encrypted, "key": key_b64}
+        
+        @self.router.post("/decrypt")
+        def decrypt_text(data: TextData):
+            try:
+                decrypted = self.cipher.decrypt(data.text)
+                return {"decrypted": decrypted}
+            except Exception as e:
+                return {"error": str(e)}
     
 
     def chat_with_gpt(self, text: str, api_key: str):
