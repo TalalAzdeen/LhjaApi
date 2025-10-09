@@ -29,6 +29,7 @@ class CompanyUpdate(BaseModel):
     services:str
 class SessionCreate(BaseModel):
     company_id: str
+    token: str
     status:str= "Active"
     total_orders:int= 0
     used_orders:int= 0
@@ -65,6 +66,7 @@ class UserHandler:
         def create_session(session: SessionCreate):
             session_id = self.db1.add_session(
                 company_id=session.company_id,
+                token= session.token,
                 status=session.status,
                 total_orders=session.total_orders,
                 used_orders=session.used_orders
