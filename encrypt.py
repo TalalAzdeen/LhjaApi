@@ -27,7 +27,15 @@ class CompanyUpdate(BaseModel):
     license_number:str
     employees:int
     services:str
+class SessionCreate(BaseModel):
+    company_id: str
+    status:str= "Active"
+    total_orders:int= 0
+    used_orders:int= 0
 
+
+class SessionUpdate(BaseModel):
+    used_orders:int
 class CompanyData(BaseModel):
     key_service: str
     company_name: str
