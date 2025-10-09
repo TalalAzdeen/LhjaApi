@@ -51,7 +51,7 @@ class UserHandler:
 
     def __init__(self):
         self.router = APIRouter()
-        self.db_json = self.load_db()
+       
         self.db = CompanyDB("LhjaAPIDb.db")
         self.db1 = SessionDB("LhjaAPIDb.db")
         self.cipher = AESCipher()
