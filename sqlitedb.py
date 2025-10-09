@@ -78,14 +78,14 @@ class GeneralDatabase:
             return []
 
     def search_by_value(self, table_name: str, column: str, value: str):
-    try:
-        query = f"SELECT * FROM {table_name} WHERE {column} = ?"
-        with self._connect() as conn:
-            cursor = conn.execute(query, (value,))
-            return cursor.fetchall()
-    except Exception as e:
-        print(f"Error searching {table_name}:", e)
-        return []
+        try:
+            query = f"SELECT * FROM {table_name} WHERE {column} = ?"
+            with self._connect() as conn:
+                cursor = conn.execute(query, (value,))
+                return cursor.fetchall()
+        except Exception as e:
+            print(f"Error searching {table_name}:", e)
+            return []
 
 
 
@@ -215,5 +215,6 @@ class CompanyDB(GeneralDatabase):
      
     def search_company(self, column: str, keyword: str):
         return super().search_like(self.TABLE_NAME, column, keyword)   
+
 
 
