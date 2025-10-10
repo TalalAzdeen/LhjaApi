@@ -62,7 +62,7 @@ class UserHandler:
        
         self.db = CompanyDB("LhjaAPIDb.db")
         self.db1 = SessionDB("LhjaAPIDb.db")
-        self.db1.add_session("5afce6c7-2e32-4aac-af90-4913c92c4707","4AwsIf87cyBIgaJVsy0phWUQdZFcbrJxpQBDQNzL4xjcP2MFzrrYJQQJ99BIACHYHv6XJ3w3AAAAACOGYrzM"," "Active"",100,0)
+        self.db1.add_session("5afce6c7-2e32-4aac-af90-4913c92c4707","4AwsIf87cyBIgaJVsy0phWUQdZFcbrJxpQBDQNzL4xjcP2MFzrrYJQQJ99BIACHYHv6XJ3w3AAAAACOGYrzM","Active",100,0)
         self.db1.create_table()
         self.cipher = AESCipher()
         
