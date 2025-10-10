@@ -139,6 +139,14 @@ class UserHandler:
             
             result = self.chat_with_gpt(message,token)
             return {"response": result}
+        @self.router.post("/ChatText2Text3")
+        def chat_text2text3(message: str,Customize_the_dialect:str,token:str,options:Options):
+            decrypted = self.cipher.decrypt(token)
+            key = self.db1.search_session("SessionId", decrypted)
+
+            result = self.chat_with_gpt(message,key)
+            
+            return {"response": result}
         @self.router.post("/ChatText2Text")
         def chat_text2text(message: str, key: str):
              
