@@ -17,6 +17,14 @@ class Options(BaseModel):
     api_version: str  
     base_url: str 
    
+class Optionsspeech(BaseModel):
+    speech_deployment_name: str
+    api_version: str  
+    base_url: str
+    file_type:str="wav"
+    voice: str = "alloy"
+
+   
 class CompanyCreate(BaseModel):
     name: str
     license_number: str
@@ -69,7 +77,19 @@ class UserHandler:
             
             return {"session_id": session_id, "message": "Session created successfully"}
 
-         
+        @self.router.get("/sessions/{session_id}")
+        def get_session(session_id: str):
+                  result =self.db1.select(
+                      "Sessions",
+                      ["SessionId"],
+                      "SessionId=?",
+                      (session_id,)
+                  )
+              
+                  if not result:
+                      raise HTTPException(status_code=404, detail="Session not found")
+
+                  return {"SessionId": result[0][2]}
         @self.router.put("/sessions/{session_id}")
         def update_used_orders(session_id: str, session: SessionUpdate):
             if session.used_orders is None:
@@ -80,7 +100,10 @@ class UserHandler:
             return {"message": "UsedOrders updated successfully"}
 
      
-        
+        @self.router.post("/sessions/search/")
+        def search_sessions(keyword: str):
+            keyword = "".join(keyword.split())
+            results = self.db1.search_session("SessionId","e9d3f998-74e4-40ea-9137-3e03fe5be238")
         
         @self.router.get("/sessions")
         def get_all_sessions(): 
@@ -99,7 +122,15 @@ class UserHandler:
             )
             return {"company_id": company_id, "message": "Company created successfully"}
 
-         
+        def create_company(company: CompanyCreate):
+            company_id = self.db.add_company(
+                name=company.name,
+                license_number=company.license_number,
+                employees=company.employees,
+                services=company.services
+            )
+            return {"company_id": company_id, "message": "Company created successfully"}
+
         @self.router.put("/companies/{company_id}")
         def update_company(company_id: str, company: CompanyUpdate):
             success = self.db.update_company(company_id, company.dict(exclude_none=True))
@@ -114,7 +145,10 @@ class UserHandler:
                 raise HTTPException(status_code=404, detail="Company not found")
             return {"message": "Company deleted successfully"}
 
-            
+        @self.router.get("/companies/search/")
+        def search_companies(column: str, keyword: str):
+            results = self.db.search_company(column, keyword)
+            return {"results": results}    
         
         @self.router.get("/companies")
         def get_all_companies():
@@ -155,25 +189,85 @@ class UserHandler:
             self.db1.update_used_orders(session_id, used_orders + 1)
 
             return {
-                    
+                   
                     "RemainingOrders": remaining - 1,
                     "Response": result
                 }
 
 
-        @self.router.post("/ChatText2Text")
-        def chat_text2text(message: str, key: str):
-             
-            result = self.chat_with_gpt(message, key_service)
-            #self.increment_request_count(key)
-            return {"response": result}
+         
+        @self.router.post("/T2T")
+        def text2text(message: str, Customize_the_dialect: str, token: str, options: Options):
+ 
+            try:
+                session_id = self.cipher.decrypt(token)
+            except Exception as e:
+                raise HTTPException(status_code=400, detail=f"Token decryption failed: {e}")
+
+          
+            key = self.db1.select(
+                "Sessions",
+                ["SessionId", "Token", "TotalOrders", "UsedOrders"],  
+                "SessionId=?",
+                (session_id,)
+            )
+
+            if not key:
+                raise HTTPException(status_code=404, detail="Session not found")
+            session_id, token, total_orders, used_orders = key[0]
+            remaining = total_orders - used_orders
+
+            if remaining <= 0:
+                 raise HTTPException(status_code=403, detail="No remaining orders. Please upgrade your plan.")
+            result = self.chat_with_gpt(message, token)
+
+ 
+            self.db1.update_used_orders(session_id, used_orders + 1)
+
+            return {
+                   
+                    "RemainingOrders": remaining - 1,
+                    "Response": result
+                }
 
         @self.router.post("/ChatText2Speech")
-        def chat_text2speech(text: str, api_key: str, file_type: str = "wav", voice: str = "alloy"):
-              
-            url = self.text_to_speech_and_upload(text, api_key, file_type, voice)
-            #self.increment_request_count(api_key)
-            return {"audio_url": url}
+        
+        def chat_text2speech(text: str,Customize_the_dialect:str,token: str, Optionsspeech:Optionsspeech):
+            try:
+                session_id = self.cipher.decrypt(token)
+            except Exception as e:
+                raise HTTPException(status_code=400, detail=f"Token decryption failed: {e}")
+
+          
+            key = self.db1.select(
+                "Sessions",
+                ["SessionId", "Token", "TotalOrders", "UsedOrders"],  
+                "SessionId=?",
+                (session_id,)
+            )
+
+            if not key:
+                raise HTTPException(status_code=404, detail="Session not found")
+            session_id, token, total_orders, used_orders = key[0]
+            remaining = total_orders - used_orders
+
+            if remaining <= 0:
+                 raise HTTPException(status_code=403, detail="No remaining orders. Please upgrade your plan.")
+            result = self.chat_with_gpt(text, key)
+            url = self.text_to_speech_and_upload(result, token, Optionsspeech.file_type,Optionsspeech.voice)
+
+ 
+            self.db1.update_used_orders(session_id, used_orders + 1)
+
+            return {
+                    
+                    "RemainingOrders": remaining - 1,
+                    "Response":url
+                }
+  
+             
+            
+         
         
         @self.router.post("/encrypt")
         def encrypt_text(data: TextData):
