@@ -69,8 +69,8 @@ class UserHandler:
             
             return {"session_id": session_id, "message": "Session created successfully"}
 
-       @self.router.get("/sessions/{session_id}")
-       def get_session(session_id: str):
+        @self.router.get("/sessions/{session_id}")
+        def get_session(session_id: str):
                   result =self.db1.select(
                       "Sessions",
                       ["SessionId"],
