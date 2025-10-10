@@ -81,7 +81,7 @@ class UserHandler:
                   if not result:
                       raise HTTPException(status_code=404, detail="Session not found")
 
-                  return {"SessionId": result[0][0]}
+                  return {"SessionId": result[0][2]}
         @self.router.put("/sessions/{session_id}")
         def update_used_orders(session_id: str, session: SessionUpdate):
             if session.used_orders is None:
@@ -155,9 +155,14 @@ class UserHandler:
         @self.router.post("/ChatText2Text3")
         def chat_text2text3(message: str,Customize_the_dialect:str,token:str,options:Options):
             decrypted = self.cipher.decrypt(token)
-            key = self.db1.search_session("SessionId", decrypted)
+            key=self.db1.select(
+                      "Sessions",
+                      ["SessionId"],
+                      "SessionId=?",
+                      (session_id,)
+                  )
 
-            result = self.chat_with_gpt(message,key)
+            result = self.chat_with_gpt(message,key[0][2])
             
             return {"response": result}
         @self.router.post("/ChatText2Text")
