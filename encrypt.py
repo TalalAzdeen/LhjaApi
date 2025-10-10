@@ -69,7 +69,19 @@ class UserHandler:
             
             return {"session_id": session_id, "message": "Session created successfully"}
 
-         
+       @self.router.get("/sessions/{session_id}")
+       def get_session(session_id: str):
+                  result = session_db.select(
+                      "Sessions",
+                      ["SessionId"],
+                      "SessionId=?",
+                      (session_id,)
+                  )
+              
+                  if not result:
+                      raise HTTPException(status_code=404, detail="Session not found")
+
+                  return {"SessionId": result[0][0]}
         @self.router.put("/sessions/{session_id}")
         def update_used_orders(session_id: str, session: SessionUpdate):
             if session.used_orders is None:
