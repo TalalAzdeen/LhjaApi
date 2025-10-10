@@ -170,7 +170,7 @@ class UserHandler:
 
             if not key:
                 raise HTTPException(status_code=404, detail="Session not found")
-            session_token = key[0][2] if len(key[0]) > 1 else None
+            session_token = key[0][1] if len(key[0]) > 1 else None
             if not session_token:
                 raise HTTPException(status_code=400, detail="Invalid session token")
             result = self.chat_with_gpt(message, session_token)
