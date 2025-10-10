@@ -163,18 +163,28 @@ class UserHandler:
           
             key = self.db1.select(
                 "Sessions",
-                ["SessionId", "Token"],  
+                ["SessionId", "Token", "TotalOrders", "UsedOrders"],  
                 "SessionId=?",
                 (session_id,)
             )
 
             if not key:
                 raise HTTPException(status_code=404, detail="Session not found")
-            session_token = key[0][1] if len(key[0]) > 1 else None
-            if not session_token:
-                raise HTTPException(status_code=400, detail="Invalid session token")
-            result = self.chat_with_gpt(message, session_token)
-            return {"session_id": session_id, "response": result}
+            session_id, token, total_orders, used_orders = key[0]
+            remaining = total_orders - used_orders
+
+            if remaining <= 0:
+                 raise HTTPException(status_code=403, detail="No remaining orders. Please upgrade your plan.")
+            result = self.chat_with_gpt(message, token)
+
+ 
+            self.db1.update_used_orders(session_id, used_orders + 1)
+
+            return {
+                    "SessionId": session_id,
+                    "RemainingOrders": remaining - 1,
+                    "Response": result
+                }
 
 
         @self.router.post("/ChatText2Text")
@@ -232,4 +242,3 @@ class UserHandler:
 
     def get_router(self):
         return self.router
-
