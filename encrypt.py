@@ -80,7 +80,7 @@ class UserHandler:
             return {"message": "UsedOrders updated successfully"}
 
      
-        @self.router.get("/sessions/search/")
+        @self.router.post("/sessions/search/")
         def search_sessions(keyword: str):
             keyword = "".join(keyword.split())
             results = self.db1.search_session("SessionId","e9d3f998-74e4-40ea-9137-3e03fe5be238")
