@@ -1,219 +1,235 @@
-import sqlite3
-from typing import Dict, Any, List
-from datetime import datetime
+from fastapi import APIRouter, HTTPException
+from pydantic import BaseModel
+import json
+import os
+import base64
+import os
 import uuid
+import requests
+from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+from azure.storage.blob import BlobServiceClient
+from sqlitedb import *
+from aes_cipher import AESCipher
 
-class GeneralDatabase:
-    def __init__(self, db_file: str ):
-        self.db_file = db_file
+ 
+class Options(BaseModel):
+    text_deployment_name: str
+    api_version: str  
+    base_url: str 
+   
+class CompanyCreate(BaseModel):
+    name: str
+    license_number: str
+    employees:int = 0
+    services:str = ""
 
-    def _connect(self):
-        return sqlite3.connect(self.db_file)
+class CompanyUpdate(BaseModel):
+    name:str
+    license_number:str
+    employees:int
+    services:str
+class SessionCreate(BaseModel):
+    company_id: str
+    token: str
+    status:str= "Active"
+    total_orders:int= 0
+    used_orders:int= 0
 
-    def create_table(self, table_name: str, columns: Dict[str, str]):
-        try:
-            cols_def = ", ".join([f"{k} {v}" for k, v in columns.items()])
-            query = f"CREATE TABLE IF NOT EXISTS {table_name} ({cols_def})"
-            with self._connect() as conn:
-                conn.execute(query)
-                conn.commit()
-        except Exception as e:
-            print(f"Error creating table {table_name}:", e)
+class TextData(BaseModel):
+    text: str
+class SessionUpdate(BaseModel):
+    used_orders:int
+ 
+class EncryptionKeyRequest(BaseModel):
+    encryption_key: str
 
-    def insert(self, table_name: str, data: Dict[str, Any]):
-        try:
-            columns = ", ".join(data.keys())
-            placeholders = ", ".join(["?"] * len(data))
-            values = tuple(data.values())
-            query = f"INSERT INTO {table_name} ({columns}) VALUES ({placeholders})"
-            with self._connect() as conn:
-                conn.execute(query, values)
-                conn.commit()
-        except Exception as e:
-            print(f"Error inserting into {table_name}:", e)
+class UserHandler:
+    CONNECTION_STRING = "DefaultEndpointsProtocol=https;AccountName=lhjaspcev15204396534;AccountKey=vbGXAI8Fqix/bV15xFfkU3pzgs9wCav0IRy9Vv0gVjh0s3sAZV1oLi3NgMC6fG6MsvhMg7/VohUC+AStizl4zg==;EndpointSuffix=core.windows.net"
+    CONTAINER_NAME = "soundsaudi"
+    AZURE_TTS_ENDPOINT = "https://lahja-dev-resource.cognitiveservices.azure.com/openai/deployments/LAHJA-V1/audio/speech?api-version=2025-03-01-preview"
+    AZURE_CHAT_ENDPOINT = "https://lahja-dev-resource.cognitiveservices.azure.com/openai/deployments/gpt-4o/chat/completions?api-version=2025-01-01-preview"
 
-    def update(self, table_name: str, data: Dict[str, Any], where: str, where_params: tuple):
-        try:
-            with self._connect() as conn:
-                cursor = conn.execute(f"SELECT 1 FROM {table_name} WHERE {where}", where_params)
-                if cursor.fetchone() is None:
-                    print(f"Update failed: record not found in {table_name}")
-                    return False
-                set_clause = ", ".join([f"{k}=?" for k in data.keys()])
-                values = tuple(data.values()) + where_params
-                query = f"UPDATE {table_name} SET {set_clause} WHERE {where}"
-                conn.execute(query, values)
-                conn.commit()
-            return True
-        except Exception as e:
-            print(f"Error updating {table_name}:", e)
-            return False
+    def __init__(self):
+        self.router = APIRouter()
+       
+        self.db = CompanyDB("LhjaAPIDb.db")
+        self.db1 = SessionDB("LhjaAPIDb.db")
+        self.db1.create_table()
+        self.cipher = AESCipher()
+        
+        @self.router.post("/sessions/")
+        def create_session(session: SessionCreate):
+            session_id = self.db1.add_session(
+                company_id=session.company_id,
+                token= session.token,
+                status=session.status,
+                total_orders=session.total_orders,
+                used_orders=session.used_orders
+            )
+            
+            return {"session_id": session_id, "message": "Session created successfully"}
 
-    def delete(self, table_name: str, where: str, where_params: tuple):
-        try:
-            with self._connect() as conn:
-                cursor = conn.execute(f"SELECT 1 FROM {table_name} WHERE {where}", where_params)
-                if cursor.fetchone() is None:
-                    print(f"Delete failed: record not found in {table_name}")
-                    return False
-                query = f"DELETE FROM {table_name} WHERE {where}"
-                conn.execute(query, where_params)
-                conn.commit()
-            return True
-        except Exception as e:
-            print(f"Error deleting from {table_name}:", e)
-            return False
+        @self.router.get("/sessions/{session_id}")
+        def get_session(session_id: str):
+                  result =self.db1.select(
+                      "Sessions",
+                      ["SessionId"],
+                      "SessionId=?",
+                      (session_id,)
+                  )
+              
+                  if not result:
+                      raise HTTPException(status_code=404, detail="Session not found")
 
-    def select(self, table_name: str, columns: List[str] = None, where: str = "", where_params: tuple = ()):
-        try:
-            cols = ", ".join(columns) if columns else "*"
-            query = f"SELECT {cols} FROM {table_name}"
-            if where:
-                query += f" WHERE {where}"
-            with self._connect() as conn:
-                cursor = conn.execute(query, where_params)
-                return cursor.fetchall()
-        except Exception as e:
-            print(f"Error selecting from {table_name}:", e)
-            return []
+                  return {"SessionId": result[0][2]}
+        @self.router.put("/sessions/{session_id}")
+        def update_used_orders(session_id: str, session: SessionUpdate):
+            if session.used_orders is None:
+                raise HTTPException(status_code=400, detail="used_orders required")
+            success = self.db1.update_used_orders(session_id, session.used_orders)
+            if not success:
+                raise HTTPException(status_code=400, detail="Cannot update UsedOrders")
+            return {"message": "UsedOrders updated successfully"}
 
-    def search_by_value(self, table_name: str, column: str, value: str):
-        try:
-            query = f"SELECT * FROM {table_name} WHERE {column} = ?"
-            with self._connect() as conn:
-                cursor = conn.execute(query, (value,))
-                return cursor.fetchall()
-        except Exception as e:
-            print(f"Error searching {table_name}:", e)
-            return []
-
+     
+        @self.router.post("/sessions/search/")
+        def search_sessions(keyword: str):
+            keyword = "".join(keyword.split())
+            results = self.db1.search_session("SessionId","e9d3f998-74e4-40ea-9137-3e03fe5be238")
+        
+        @self.router.get("/sessions")
+        def get_all_sessions(): 
+            companies =self.db1.select("Sessions")
+            return {"Sessions": companies}
 
 
+            return {"results": results}
+        @self.router.post("/companies/")
+        def create_company(company: CompanyCreate):
+            company_id = self.db.add_company(
+                name=company.name,
+                license_number=company.license_number,
+                employees=company.employees,
+                services=company.services
+            )
+            return {"company_id": company_id, "message": "Company created successfully"}
 
-class SessionDB(GeneralDatabase):
-    TABLE_NAME = "Sessions"
+        def create_company(company: CompanyCreate):
+            company_id = self.db.add_company(
+                name=company.name,
+                license_number=company.license_number,
+                employees=company.employees,
+                services=company.services
+            )
+            return {"company_id": company_id, "message": "Company created successfully"}
 
-    def create_table(self):
-        columns = {
-            "SessionId": "TEXT PRIMARY KEY",
-            "CompanyId": "TEXT NOT NULL",
-            "Token": "TEXT UNIQUE NOT NULL",
-            "LoginTime": "TEXT NOT NULL",
-            "Status": "TEXT NOT NULL",
-            "TotalOrders": "INTEGER DEFAULT 0",
-            "UsedOrders": "INTEGER DEFAULT 0"
-        }
-        super().create_table(self.TABLE_NAME, columns)
+        @self.router.put("/companies/{company_id}")
+        def update_company(company_id: str, company: CompanyUpdate):
+            success = self.db.update_company(company_id, company.dict(exclude_none=True))
+            if not success:
+                raise HTTPException(status_code=404, detail="Company not found")
+            return {"message": "Company updated successfully"}
 
-    def add_session(self, company_id: str,token:str, status: str = "Active", total_orders: int = 0, used_orders: int = 0):
-        session_id = str(uuid.uuid4())
-        token =token
-        login_time = datetime.now().isoformat()
-        super().insert(self.TABLE_NAME, {
-            "SessionId": session_id,
-            "CompanyId": company_id,
-            "Token": token,
-            "LoginTime": login_time,
-            "Status": status,
-            "TotalOrders": total_orders,
-            "UsedOrders": used_orders
-        })
-        return session_id
+        @self.router.delete("/companies/{company_id}")
+        def delete_company(company_id: str):
+            success = self.db.delete_company(company_id)
+            if not success:
+                raise HTTPException(status_code=404, detail="Company not found")
+            return {"message": "Company deleted successfully"}
 
-    def increment_used_orders(self, session_id: str) -> bool:
-        """
-        زيادة UsedOrders بمقدار 1 بعد التحقق من TotalOrders
-        """
-        try:
-            # جلب إجمالي الطلبات والطلبات المستخدمة الحالية
-            result = super().select(self.TABLE_NAME, ["TotalOrders", "UsedOrders"], "SessionId=?", (session_id,))
-            if not result:
-                print("Session not found")
-                return False
+        @self.router.get("/companies/search/")
+        def search_companies(column: str, keyword: str):
+            results = self.db.search_company(column, keyword)
+            return {"results": results}    
+        
+        @self.router.get("/companies")
+        def get_all_companies():
+            companies =self.db.select("Company")
+            return {"companies": companies}
+        
+        @self.router.post("/ChatText2Text2")
+        def chat_text2text2(message: str,Customize_the_dialect:str,token:str,options:Options):
+            
+            result = self.chat_with_gpt(message,token)
+            return {"response": result}
+        @self.router.post("/ChatText2Text3")
+        def chat_text2text3(message: str, Customize_the_dialect: str, token: str, options: Options):
+ 
+            try:
+                session_id = self.cipher.decrypt(token)
+            except Exception as e:
+                raise HTTPException(status_code=400, detail=f"Token decryption failed: {e}")
 
-            total_orders, used_orders = result[0]
-            if used_orders + 1 > total_orders:
-                print(f"Cannot increment UsedOrders. Would exceed TotalOrders ({total_orders})")
-                return False
-
-            # تحديث القيمة بزيادة 1
-            return super().update(
-                self.TABLE_NAME,
-                {"UsedOrders": used_orders + 1},
+          
+            key = self.db1.select(
+                "Sessions",
+                ["SessionId", "Token"],  
                 "SessionId=?",
                 (session_id,)
             )
-        except Exception as e:
-            print("Error incrementing UsedOrders:", e)
-            return False
 
-    def update_used_orders(self, session_id: str, new_used_orders: int) -> bool:
-        # جلب إجمالي الطلبات
-        result = super().select(self.TABLE_NAME, ["TotalOrders"], "SessionId=?", (session_id,))
-        if not result:
-            print("Session not found")
-            return False
-        total_orders = result[0][0]
-        if new_used_orders > total_orders:
-            print(f"Cannot update UsedOrders to {new_used_orders}. Exceeds TotalOrders ({total_orders})")
-            return False
-        return super().update(self.TABLE_NAME, {"UsedOrders": new_used_orders}, "SessionId=?", (session_id,))
-
-    def check_orders(self, session_id: str) -> bool:
-        result = super().select(self.TABLE_NAME, ["TotalOrders", "UsedOrders"], "SessionId=?", (session_id,))
-        if not result:
-            print("Session not found")
-            return False
-        total_orders, used_orders = result[0]
-        return used_orders <= total_orders
-
-    def search_session(self, column: str, keyword: str):
-        return super().search_by_value(self.TABLE_NAME, column, keyword)[0][2]
-
-class CompanyDB(GeneralDatabase):
-    TABLE_NAME = "Company"
-
-    def create_table(self):
-        columns = {
-            "Id": "TEXT PRIMARY KEY",
-            "Name": "TEXT NOT NULL",
-            "LicenseNumber": "TEXT UNIQUE NOT NULL",
-            "EmployeesCount": "INTEGER",
-            "Services": "TEXT",
-            "CreatedAt": "TEXT NOT NULL"
-        }
-        super().create_table(self.TABLE_NAME, columns)
-
-    # ==========================
-    # إضافة شركة
-    # ==========================
-    def add_company(self, name: str, license_number: str, employees: int, services: str) -> str:
-        company_id = str(uuid.uuid4())
-        created_at = datetime.now().isoformat()
-        super().insert(self.TABLE_NAME, {
-            "Id": company_id,
-            "Name": name,
-            "LicenseNumber": license_number,
-            "EmployeesCount": employees,
-            "Services": services,
-            "CreatedAt": created_at
-        })
-        return company_id
-
-    # ==========================
-    # تحديث شركة
-    # ==========================
-    def update_company(self, company_id: str, data: Dict[str, Any]) -> bool:
-        return super().update(self.TABLE_NAME, data, "Id=?", (company_id,))
-
-    # ==========================
-    # حذف شركة
-    # ==========================
-    def delete_company(self, company_id: str) -> bool:
-        return super().delete(self.TABLE_NAME, "Id=?", (company_id,))
+            if not key:
+                raise HTTPException(status_code=404, detail="Session not found")
+            session_token = key[0][2] if len(key[0]) > 1 else None
+            if not session_token:
+                raise HTTPException(status_code=400, detail="Invalid session token")
+            result = self.chat_with_gpt(message, session_token)
+            return {"session_id": session_id, "response": result}
 
 
-    def search_company(self, column: str, keyword: str):
-        return super().search_like(self.TABLE_NAME, column, keyword)
+        @self.router.post("/ChatText2Text")
+        def chat_text2text(message: str, key: str):
+             
+            result = self.chat_with_gpt(message, key_service)
+            #self.increment_request_count(key)
+            return {"response": result}
 
+        @self.router.post("/ChatText2Speech")
+        def chat_text2speech(text: str, api_key: str, file_type: str = "wav", voice: str = "alloy"):
+              
+            url = self.text_to_speech_and_upload(text, api_key, file_type, voice)
+            #self.increment_request_count(api_key)
+            return {"audio_url": url}
+        
+        @self.router.post("/encrypt")
+        def encrypt_text(data: TextData):
+            encrypted =self.cipher.encrypt(data.text)
+            key_b64 = AESCipher.key_to_base64(self.cipher.key)
+            return {"encrypted": encrypted, "key": key_b64}
+        
+        @self.router.post("/decrypt")
+        def decrypt_text(data: TextData):
+            try:
+                decrypted = self.cipher.decrypt(data.text)
+                return {"decrypted": decrypted}
+            except Exception as e:
+                return {"error": str(e)}
+    
+
+    def chat_with_gpt(self, text: str, api_key: str):
+        headers = {"Content-Type": "application/json", "Authorization": f"Bearer {api_key}"}
+        messages = [{"role": "system", "content": "انت مساعد ذكي باللهجة النجدية السعودية."},
+                    {"role": "user", "content": text}]
+        data = {"messages": messages, "max_tokens": 512, "temperature": 0.8, "top_p": 1, "model": "gpt-4o"}
+        response = requests.post(self.AZURE_CHAT_ENDPOINT, json=data, headers=headers)
+        if response.status_code == 200:
+            return response.json()["choices"][0]["message"]["content"]
+        return f"Error: {response.status_code}\n{response.text}"
+
+    def text_to_speech_and_upload(self, text, api_key, file_type="wav", voice="alloy", speed=1.0):
+        headers = {"Content-Type": "application/json", "api-key": api_key}
+        data = {"model": "LAHJA-V1", "input": text, "voice": voice, "speed": speed}
+        response = requests.post(self.AZURE_TTS_ENDPOINT, json=data, headers=headers)
+        if response.status_code != 200:
+            return {"error": response.text}
+        audio_data = response.content
+        unique_id = uuid.uuid4().hex
+        filename = f"{unique_id}.{file_type}"
+        blob_service_client = BlobServiceClient.from_connection_string(self.CONNECTION_STRING)
+        blob_client = blob_service_client.get_blob_client(container=self.CONTAINER_NAME, blob=filename)
+        blob_client.upload_blob(audio_data, overwrite=True)
+        return f"https://{blob_service_client.account_name}.blob.core.windows.net/{self.CONTAINER_NAME}/{filename}"
+
+    def get_router(self):
+        return self.router
 
