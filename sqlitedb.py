@@ -168,7 +168,7 @@ class SessionDB(GeneralDatabase):
         return used_orders <= total_orders
 
     def search_session(self, column: str, keyword: str):
-        return super().search_by_value(self.TABLE_NAME, column, keyword)
+        return super().search_by_value(self.TABLE_NAME, column, keyword)[0][2]
 
 class CompanyDB(GeneralDatabase):
     TABLE_NAME = "Company"
@@ -215,6 +215,7 @@ class CompanyDB(GeneralDatabase):
      
     def search_company(self, column: str, keyword: str):
         return super().search_like(self.TABLE_NAME, column, keyword)   
+
 
 
 
