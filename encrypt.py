@@ -82,6 +82,7 @@ class UserHandler:
      
         @self.router.get("/sessions/search/")
         def search_sessions(keyword: str):
+            keyword = keyword.strip()
             results = self.db1.search_session("SessionId", keyword)
         
         @self.router.get("/sessions")
