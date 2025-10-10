@@ -71,7 +71,7 @@ class UserHandler:
 
        @self.router.get("/sessions/{session_id}")
        def get_session(session_id: str):
-                  result = session_db.select(
+                  result =self.db1.select(
                       "Sessions",
                       ["SessionId"],
                       "SessionId=?",
