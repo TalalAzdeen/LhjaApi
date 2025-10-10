@@ -78,19 +78,7 @@ class UserHandler:
             
             return {"session_id": session_id, "message": "Session created successfully"}
 
-        @self.router.get("/sessions/{session_id}")
-        def get_session(session_id: str):
-                  result =self.db1.select(
-                      "Sessions",
-                      ["SessionId"],
-                      "SessionId=?",
-                      (session_id,)
-                  )
-              
-                  if not result:
-                      raise HTTPException(status_code=404, detail="Session not found")
-
-                  return {"SessionId": result[0][2]}
+         
         @self.router.put("/sessions/{session_id}")
         def update_used_orders(session_id: str, session: SessionUpdate):
             if session.used_orders is None:
@@ -101,11 +89,7 @@ class UserHandler:
             return {"message": "UsedOrders updated successfully"}
 
      
-        @self.router.post("/sessions/search/")
-        def search_sessions(keyword: str):
-            keyword = "".join(keyword.split())
-            results = self.db1.search_session("SessionId","e9d3f998-74e4-40ea-9137-3e03fe5be238")
-        
+         
         @self.router.get("/sessions")
         def get_all_sessions(): 
             companies =self.db1.select("Sessions")
@@ -146,10 +130,7 @@ class UserHandler:
                 raise HTTPException(status_code=404, detail="Company not found")
             return {"message": "Company deleted successfully"}
 
-        @self.router.get("/companies/search/")
-        def search_companies(column: str, keyword: str):
-            results = self.db.search_company(column, keyword)
-            return {"results": results}    
+            
         
         @self.router.get("/companies")
         def get_all_companies():
